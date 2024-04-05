@@ -3,14 +3,14 @@ name: CHOCOLATINE Workflow
 on:
   push:
     branches-ignore:
-      - "ga-ignore-*"
+      - "ga-ignore-"
   pull_request:
     branches-ignore:
-      - "ga-ignore-*"
+      - "ga-ignore-"
 
 env:
-  TARGET_REPO: ${{ secrets.MIRROR_URL }}
-  EXEC_NAME: 'chocolatine_exe'
+  TARGET_REPO: git@github.com:EpitechPromo2028/B-DOP-200-BAR-2-1-chocolatine-lodovico.gelatti-mach.git
+  EXEC_NAME: 'my_program'
 
 jobs:
   check_coding_style:
