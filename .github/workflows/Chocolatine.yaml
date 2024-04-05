@@ -14,31 +14,25 @@ env:
 
 jobs:
   check_coding_style:
+    name: "Use coding style"
     runs-on: ubuntu-latest
     container: ghcr.io/epitech/coding-style-checker:latest
     steps:
-
-      - name: Validate Coding Style
-        uses: actions/checkout@master
-        with:
-          repository: ''
-
-      - name: Run coding-style
-        run: check.sh . /tmp
-
-      - name: Create annotation for coding-style errors
+      - uses: actions/checkout@v3
+      - id: check_coding_style
         run: |
-          input=/tmp/coding-style-reports.log
-          while IFS= read -r -a line; do
-            fields=($(printf "%s" "$line"|cut -d':' --output-delimiter=' ' -f1-))
-            echo "::error title=${fields[2]} coding style error,file=${fields[0]},line=${fields[1]}::${fields[3]}"
-          done < $input
-
-      - name: Coding Style Evaluation
-        run: |
-          NB_ERROR=$(cat /tmp/coding-style-reports.log | wc -l)
-          if [ $NB_ERROR -gt 0 ]; then
-            exit
+          check.sh $(pwd) $(pwd)
+          CODING_STYLE_ERRORS=$(cat $(pwd)/coding-style-reports.log)
+          for ERRORS in $CODING_STYLE_ERRORS; do
+            array=(`echo $ERRORS | sed 's/:/\n/g'`)
+            echo "::error file=${array[1]#./},title=${array[3]#./} coding style errors detected: ${array[2]#./}::${array[4]#./}"
+          done
+          if [[ -n $CODING_STYLE_ERRORS ]]
+          then
+            exit 1
+          else
+            echo No coding style errors detected
+          fi
 
   compile_program:
     name: Compile Chocolatine
