@@ -3,85 +3,86 @@ name: CHOCOLATINE Workflow
 on:
   push:
     branches-ignore:
-      - " ga-ignore-"
+      - "ga-ignore-*"
   pull_request:
     branches-ignore:
-      - " ga-ignore-"
+      - "ga-ignore-*"
 
 env:
-  MIRROR_URL: ${{ secrets.MIRROR_URL }}
-  EXECUTABLES: 'my_program'
+  TARGET_REPO: ${{ secrets.MIRROR_URL }}
+  EXEC_NAME: 'chocolatine_exe'
 
 jobs:
-  check_coding_style:
-    name: Check Coding Style
+  style_check:
+    name: Validate Coding Style
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/epitech/coding-style-checker:latest
+      image: ghcr.io/epitech/style-checker:latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Sync Code
+        uses: actions/checkout@v3
 
-      - name: Check coding style
+      - name: Coding Style Evaluation
         run: |
-          check.sh $(pwd) $(pwd)
-          if [ -s coding-style-reports.log ]; then
-            echo "Coding style errors found:"
-            cat coding-style-reports.log
+          check_style.sh $(pwd) $(pwd)
+          if [ -s style-errors.log ]; then
+            echo "Found style issues:"
+            cat style-errors.log
             exit 1
           fi
 
-  check_program_compilation:
-    name: Check Program Compilation
-    needs: check_coding_style
+  compile_program:
+    name: Compile Chocolatine
+    needs: style_check
     runs-on: ubuntu-latest
     container:
-      image: epitechcontent/epitest-docker
+      image: epitechcontent/compile-env:latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Sync Code
+        uses: actions/checkout@v3
 
-      - name: Compile program
+      - name: Compilation
         run: |
           make
           make clean
 
-      - name: Verify executables
+      - name: Validate Executable
         run: |
-          for exec in ${EXECUTABLES//,/ }; do
-            if [ ! -x "$exec" ]; then
-              echo "$exec is not executable or missing"
-              exit 1
-            fi
-          done
+          if [ ! -x "${EXEC_NAME}" ]; then
+            echo "${EXEC_NAME} is not executable or missing."
+            exit 1
+          fi
 
-  run_tests:
-    name: Run Tests
-    needs: check_program_compilation
+  testing:
+    name: Execute Tests
+    needs: compile_program
     runs-on: ubuntu-latest
     container:
-      image: epitechcontent/epitest-docker
+      image: epitechcontent/test-env:latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Sync Code
+        uses: actions/checkout@v3
 
-      - name: Run tests
-        run: |
-          make tests_run
-  push_to_mirror:
-    runs-on: ubuntu-latest
-    needs:  run_tests
+      - name: Run Chocolatine Tests
+        run: make tests_run
+
+  mirror_repo:
+    name: Mirror to Target Repository
+    needs: testing
     if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: pixta-dev/repository-mirroring-action@v1
+
+      - name: Mirror Repository
+        uses: pixta-dev/repository-mirroring-action@v1
         with:
-          target_repo_url:
-            ${{ env.MIRROR_URL }}
-          ssh_private_key:
-            ${{ secrets.GIT_SSH_PRIVATE_KEY }}
+          target_repo_url: ${{ env.TARGET_REPO }}
+          ssh_private_key: ${{ secrets.SSH_KEY }}
