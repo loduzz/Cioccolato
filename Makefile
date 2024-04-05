@@ -5,39 +5,55 @@
 ## Makefile
 ##
 
-CC = gcc -g3
-CFLAGS = -I./include/ -W -Wall -Wextra
-TEST_SRC_FILES = $(wildcard $(TEST_DIR)/*.c)
-TEST_OBJ_FILES = $(TEST_SRC_FILES:$(TEST_DIR)/%.c=$(OBJ_DIR)/test_%.o)
-TEST_BIN_FILES = $(TEST_SRC_FILES:$(TEST_DIR)/%.c=$(BIN_DIR)/test_%)
-CRITERION_FLAGS = -lcriterion
-
-SRC = src/main.c
-
-OBJ = $(SRC:.c=.o)
-
-NAME = my_program
-
-all: $(NAME)
-
-$(NAME): $(OBJ)
-	$(CC) $(CFLAGS) $(OBJ) -o $(NAME)
-
+CC = gcc
+ 
+BYNARY_NAME = my_program
+ 
+BYNARY_TEST = tests_run
+ 
+CFLAGS = -Wall -Wextra -g3 -Iinclude
+ 
+COVERAGE = --coverage
+ 
+TEST_FLAGS = $(COVERAGE) -lcriterion
+ 
+C_SOURCES = src/main.c
+ 
+TEST_SOURCES = tests/test_main.c
+ 
+OBJECTS = $(C_SOURCES:.c=.o)
+TEST_OBJECTS = $(TEST_SOURCES:.c=.o)
+ 
+all: $(BYNARY_NAME)
+ 
+$(BYNARY_NAME): $(OBJECTS)
+	@echo "- Building $(BYNARY_NAME) binary"
+	@$(CC) -o $@ $^
+ 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-test: $(TEST_BIN_FILES)
-	@for test_bin in $^ ; do \
-		echo Running $$test_bin ; \
-		./$$test_bin ; \
-	done
-
+	@echo "- $< -> $@"
+	@if [ "$(MAKECMDGOALS)" = "$(BYNARY_TEST)" ]; then \
+		$(CC) $(CFLAGS) -c -o $@ $< $(COVERAGE); \
+	else \
+		$(CC) $(CFLAGS) -c -o $@ $<; \
+	fi
+ 
 clean:
-	rm -f $(OBJ)
-
+	@echo "- Cleaning"
+	@rm -rf $(OBJECTS) $(TEST_OBJECTS)
+ 
 fclean: clean
-	rm -f $(NAME)
-
+	@echo "- Cleaning objects && binary"
+	@rm -rf $(BYNARY_NAME) $(BYNARY_TEST)
+ 
 re: fclean all
-
-.PHONY: all clean fclean re
+ 
+unit_tests:
+	$(MAKE) fclean
+ 
+$(BYNARY_TEST): $(OBJECTS) $(TEST_OBJECTS)
+	@echo "- Running tests"
+	@$(CC) -o $@ $^ $(TEST_FLAGS)
+	@./$@
+ 
+.PHONY: all clean fclean re $(BYNARY_TEST)
