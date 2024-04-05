@@ -55,7 +55,7 @@ jobs:
             done
           IFS=$OIFS
 
-  run_tests:
+  testing:
     needs: [check_program_compilation]
     name: "Tests"
     runs-on: ubuntu-latest
