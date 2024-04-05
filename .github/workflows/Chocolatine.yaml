@@ -13,24 +13,32 @@ env:
   EXEC_NAME: 'chocolatine_exe'
 
 jobs:
-  style_check:
-    name: Validate Coding Style
+  check_coding_style:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/epitech/coding-style-checker:latest
-
+    container: ghcr.io/epitech/coding-style-checker:latest
     steps:
-      - name: Sync Code
-        uses: actions/checkout@v3
+
+      - name: Validate Coding Style
+        uses: actions/checkout@master
+        with:
+          repository: ''
+
+      - name: Run coding-style
+        run: check.sh . /tmp
+
+      - name: Create annotation for coding-style errors
+        run: |
+          input=/tmp/coding-style-reports.log
+          while IFS= read -r -a line; do
+            fields=($(printf "%s" "$line"|cut -d':' --output-delimiter=' ' -f1-))
+            echo "::error title=${fields[2]} coding style error,file=${fields[0]},line=${fields[1]}::${fields[3]}"
+          done < $input
 
       - name: Coding Style Evaluation
         run: |
-          check_style.sh $(pwd) $(pwd)
-          if [ -s style-errors.log ]; then
-            echo "Found style issues:"
-            cat style-errors.log
-            exit 1
-          fi
+          NB_ERROR=$(cat /tmp/coding-style-reports.log | wc -l)
+          if [ $NB_ERROR -gt 0 ]; then
+            exit
 
   compile_program:
     name: Compile Chocolatine
