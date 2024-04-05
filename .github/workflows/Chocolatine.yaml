@@ -34,42 +34,39 @@ jobs:
             echo No coding style errors detected
           fi
 
-  compile_program:
-    name: Compile Chocolatine
-    needs: check_coding_style
+  check_program_compilation:
+    name: "Checks compilation"
     runs-on: ubuntu-latest
     container:
-      image: epitechcontent/compile-env:latest
+      image: epitechcontent/epitest-docker:latest
 
     steps:
-      - name: Sync Code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - id: check_program_compilation
+        run: make
+        timeout-minutes: 2
+      - run: make clean
+      - run: |
+          OIFS=$IFS
+          IFS=','
+          for x in $EXECUTABLES
+            do
+              ./$x $ARGUMENTS
+            done
+          IFS=$OIFS
 
-      - name: Compilation
-        run: |
-          make
-          make clean
-
-      - name: Validate Executable
-        run: |
-          if [ ! -x "${EXEC_NAME}" ]; then
-            echo "${EXEC_NAME} is not executable or missing."
-            exit 1
-          fi
-
-  testing:
-    name: Execute Tests
-    needs: compile_program
+  run_tests:
+    needs: [check_program_compilation]
+    name: "Tests"
     runs-on: ubuntu-latest
     container:
-      image: epitechcontent/test-env:latest
+      image: epitechcontent/epitest-docker:latest
 
     steps:
-      - name: Sync Code
-        uses: actions/checkout@v3
-
-      - name: Run Chocolatine Tests
+      - uses: actions/checkout@v3
+      - id: run_tests
         run: make tests_run
+        timeout-minutes: 2
 
   mirror_repo:
     name: Mirror to Target Repository
