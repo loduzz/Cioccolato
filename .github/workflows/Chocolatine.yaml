@@ -1,0 +1,89 @@
+name: CHOCOLATINE Workflow
+
+on:
+  push:
+    branches-ignore:
+      - 'ga-ignore-*'
+  pull_request:
+    branches:
+      - '**'
+
+env:
+  MIRROR_URL: ${{ secrets.MIRROR_URL }}
+  EXECUTABLES: 'my_program'
+
+jobs:
+  check_coding_style:
+    name: Check Coding Style
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/epitech/coding-style-checker:latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Check coding style
+        run: |
+          check.sh $(pwd) $(pwd)
+          if [ -s coding-style-reports.log ]; then
+            echo "Coding style errors found:"
+            cat coding-style-reports.log
+            exit 1
+          fi
+
+  check_program_compilation:
+    name: Check Program Compilation
+    needs: check_coding_style
+    runs-on: ubuntu-latest
+    container:
+      image: epitechcontent/epitest-docker
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Compile program
+        run: |
+          make
+          make clean
+
+      - name: Verify executables
+        run: |
+          for exec in ${EXECUTABLES//,/ }; do
+            if [ ! -x "$exec" ]; then
+              echo "$exec is not executable or missing"
+              exit 1
+            fi
+          done
+
+  run_tests:
+    name: Run Tests
+    needs: check_program_compilation
+    runs-on: ubuntu-latest
+    container:
+      image: epitechcontent/epitest-docker
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run tests
+        run: |
+          make tests_run
+
+  push_to_mirror:
+    if: github.event_name == 'push' && github.repository != env.MIRROR_URL
+    name: Push to Mirror Repository
+    needs: run_tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Mirror to Repository
+        uses: pixta-dev/repository-mirroring-action@v1
+        with:
+          ssh_private_key: ${{ secrets.GIT_SSH_PRIVATE_KEY }}
+          target_repo_url: ${{ env.MIRROR_URL }}
