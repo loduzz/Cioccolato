@@ -42,7 +42,7 @@ jobs:
 
   compile_program:
     name: Compile Chocolatine
-    needs: style_check
+    needs: check_coding_style
     runs-on: ubuntu-latest
     container:
       image: epitechcontent/compile-env:latest
